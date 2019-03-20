@@ -16,6 +16,8 @@ $ docker run -ti -p 127.0.0.1:5000:5000 blabla1337/owasp-skf-lab:url-redirection
 Now that the app is running let's go hacking!
 {% endhint %}
 
+![Docker image and write-up thanks to ING!](.gitbook/assets/ING_Primary_Logo.png)
+
 ## Reconnaissance
 
 #### Step 1
@@ -23,6 +25,8 @@ Now that the app is running let's go hacking!
 The application shows that there is a new version of the website available somewhere, and a click on the button "Go to new website" will redirect you to it. 
 
 If we click on the button we will be redirected on the new page [http://localhost:5000/newsite](http://localhost:5000/newsite)
+
+![](.gitbook/assets/url-redirect-hard-1.png)
 
 #### Step 2
 
@@ -34,7 +38,9 @@ GET /redirect?newurl=/newsite
 
 that will generate a 302 Redirect response from the server
 
-Exactly like in the previous example \(KBID XXX\). If we look at the code we discover a tiny difference: a blacklist!
+![](.gitbook/assets/url-redirect-hard-2.png)
+
+If we look at the code we discover a tiny difference from the previous challenge (Open redirect): a blacklist!
 
 ```python
 landing_page = request.args.get('newurl')
@@ -43,7 +49,7 @@ if blacklist(landing_page):
 return redirect(landing_page, 302)
 ```
 
-If we look at the blacklist definition, we can immediately see that the URL, in order to be valid, must not contain any "." \(dot\).
+Looking at the blacklist definition, we can immediately see that the URL, in order to be valid, must not contain any "." \(dot\).
 
 ```python
 def blacklist(url):
@@ -60,11 +66,16 @@ def blacklist(url):
 
 Let's verify the effectiveness of this blacklist. If we try to exploit the unvalidated redirect using an external website, we see that the application blocks us, returning an error in the page. 
 
-If we URL encode the dot the application is smart enough to decode it and recognise it in the URL, blocking us again.
+![](.gitbook/assets/url-redirect-hard-3.png)
+
+
+If we URL encode the dot, the application is smart enough to decode it and recognise it in the URL, blocking us again. We can verify it just using:
+
+`http://0.0.0.0:5000/redirect?newurl=http://google%2ecom`
 
 ## Exploitation
 
-Although we cannot explicitly use the dot character, we can find different ways to bypass the blacklist. In example we could use the following techniques:
+Although we cannot explicitly use the dot character, we can find different ways to bypass the blacklist. Perhaps, we could use the following techniques:
 
 * double encoding:  `https://google%252ecom` 
 * UTF-8 encoding: `https://google.com%E3%80%82.com`
@@ -72,7 +83,14 @@ Although we cannot explicitly use the dot character, we can find different ways 
 
 Using the payload above we will be able to successfully redirect a user to a malicious website
 
+![](.gitbook/assets/url-redirect-hard-4.png)
+
+The application successfully redirects the user to google.com, using the encoded value. 
+
+
 ##  Additional sources
 
-* [https://www.owasp.org/index.php/Testing\_for\_Client\_Side\_URL\_Redirect\_\(OTG-CLIENT-004\)](https://www.owasp.org/index.php/Testing_for_Client_Side_URL_Redirect_%28OTG-CLIENT-004%29)
+Please refer to the OWASP testing guide for a full complete description about open redirect with all the edge cases over different platforms!
+
+{% embed url="https://www.owasp.org/index.php/Testing_for_Client_Side_URL_Redirect_%28OTG-CLIENT-004%29" %}
 
